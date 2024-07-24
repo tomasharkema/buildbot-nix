@@ -1,8 +1,8 @@
-{ inputs, ... }: {
+{inputs, ...}: {
   imports = [
     inputs.treefmt-nix.flakeModule
   ];
-  perSystem = { pkgs, ... }: {
+  perSystem = {pkgs, ...}: {
     treefmt = {
       projectRootFile = ".git/config";
       programs.nixpkgs-fmt.enable = true;
@@ -10,12 +10,12 @@
       programs.deno.enable = true;
       programs.ruff.check = true;
       programs.ruff.format = true;
-      settings.formatter.shellcheck.options = [ "-s" "bash" ];
+      settings.formatter.shellcheck.options = ["-s" "bash"];
 
       programs.mypy = {
         enable = true;
         directories.".".extraPythonPackages = [
-          pkgs.python3.pkgs.twisted
+          pkgs.python312.pkgs.twisted
         ];
       };
 

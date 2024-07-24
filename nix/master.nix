@@ -1,34 +1,31 @@
-{ config
-, pkgs
-, lib
-, ...
-}:
-let
+{
+  config,
+  pkgs,
+  lib,
+  ...
+}: let
   cfg = config.services.buildbot-nix.master;
   inherit (lib) mkRemovedOptionModule mkRenamedOptionModule;
 
-  interpolateType =
-    lib.mkOptionType {
-      name = "interpolate";
+  interpolateType = lib.mkOptionType {
+    name = "interpolate";
 
-      description = ''
-        A type represnting a Buildbot interpolation string, supports interpolations like `result-%(prop:attr)s`.
-      '';
+    description = ''
+      A type represnting a Buildbot interpolation string, supports interpolations like `result-%(prop:attr)s`.
+    '';
 
-      check = x:
-        x ? "_type" && x._type == "interpolate" && x ? "value";
-    };
+    check = x:
+      x ? "_type" && x._type == "interpolate" && x ? "value";
+  };
 
-  interpolateToString =
-    value:
-    if lib.isAttrs value && value ? "_type" && value._type == "interpolate" then
-      "util.Interpolate(${builtins.toJSON value.value})"
-    else
-      builtins.toJSON value;
-in
-{
+  interpolateToString = value:
+    if lib.isAttrs value && value ? "_type" && value._type == "interpolate"
+    then "util.Interpolate(${builtins.toJSON value.value})"
+    else builtins.toJSON value;
+in {
   imports = [
-    (mkRenamedOptionModule
+    (
+      mkRenamedOptionModule
       [
         "services"
         "buildbot-nix"
@@ -43,7 +40,8 @@ in
         "admins"
       ]
     )
-    (mkRenamedOptionModule
+    (
+      mkRenamedOptionModule
       [
         "services"
         "buildbot-nix"
@@ -61,7 +59,8 @@ in
         "tokenFile"
       ]
     )
-    (mkRemovedOptionModule
+    (
+      mkRemovedOptionModule
       [
         "services"
         "buildbot-nix"
@@ -101,7 +100,7 @@ in
       };
 
       postBuildSteps = lib.mkOption {
-        default = [ ];
+        default = [];
         description = ''
           A list of steps to execute after every successful build.
         '';
@@ -115,7 +114,7 @@ in
             };
 
             environment = lib.mkOption {
-              type = with lib.types; attrsOf (oneOf [ interpolateType str ]);
+              type = with lib.types; attrsOf (oneOf [interpolateType str]);
               description = ''
                 Extra environment variables to add to the environment of this build step.
                 The base environment is the environment of the `buildbot-worker` service.
@@ -123,11 +122,11 @@ in
                 To access the properties of a build, use the `interpolate` function defined in
                 `inputs.buildbot-nix.lib.interpolate` like so `(interpolate "result-%(prop:attr)s")`.
               '';
-              default = { };
+              default = {};
             };
 
             command = lib.mkOption {
-              type = with lib.types; oneOf [ str (listOf (oneOf [ str interpolateType ])) ];
+              type = with lib.types; oneOf [str (listOf (oneOf [str interpolateType]))];
               description = ''
                 The command to execute as part of the build step. Either a single string or
                 a list of strings. Be careful that neither variant is interpreted by a shell,
@@ -173,9 +172,11 @@ in
         };
       };
       gitea = {
-        enable = lib.mkEnableOption "Enable Gitea integration" // {
-          default = cfg.authBackend == "gitea";
-        };
+        enable =
+          lib.mkEnableOption "Enable Gitea integration"
+          // {
+            default = cfg.authBackend == "gitea";
+          };
 
         tokenFile = lib.mkOption {
           type = lib.types.path;
@@ -210,9 +211,11 @@ in
         };
       };
       github = {
-        enable = lib.mkEnableOption "Enable GitHub integration" // {
-          default = cfg.authBackend == "github";
-        };
+        enable =
+          lib.mkEnableOption "Enable GitHub integration"
+          // {
+            default = cfg.authBackend == "github";
+          };
 
         authType = lib.mkOption {
           type = lib.types.attrTag {
@@ -278,7 +281,7 @@ in
       };
       admins = lib.mkOption {
         type = lib.types.listOf lib.types.str;
-        default = [ ];
+        default = [];
         description = "Users that are allowed to login to buildbot, trigger builds and change settings";
       };
       workersFile = lib.mkOption {
@@ -287,7 +290,7 @@ in
       };
       buildSystems = lib.mkOption {
         type = lib.types.listOf lib.types.str;
-        default = [ pkgs.hostPlatform.system ];
+        default = [pkgs.hostPlatform.system];
         description = "Systems that we will be build";
       };
       evalMaxMemorySize = lib.mkOption {
@@ -383,9 +386,9 @@ in
         enable = true;
 
         # disable example workers from nixpkgs
-        builders = [ ];
-        schedulers = [ ];
-        workers = [ ];
+        builders = [];
+        schedulers = [];
+        workers = [];
 
         home = "/var/lib/buildbot";
         extraImports = ''
@@ -413,101 +416,125 @@ in
             NixConfigurator(
                 auth_backend=${builtins.toJSON cfg.authBackend},
                 github=${
-                  if (!cfg.github.enable) then
-                    "None"
-                  else
-                    "GithubConfig(
+              if (!cfg.github.enable)
+              then "None"
+              else "GithubConfig(
                     oauth_id=${builtins.toJSON cfg.github.oauthId},
                     topic=${builtins.toJSON cfg.github.topic},
                     auth_type=${
-                            if cfg.github.authType ? "legacy" then
-                              ''AuthTypeLegacy()''
-                            else if cfg.github.authType ? "app" then
-                              ''
-                                AuthTypeApp(
-                                  app_id=${toString cfg.github.authType.app.id},
-                                )
-                              ''
-                            else
-                              throw "One of AuthTypeApp or AuthTypeLegacy must be enabled"
-                          }
+                if cfg.github.authType ? "legacy"
+                then ''AuthTypeLegacy()''
+                else if cfg.github.authType ? "app"
+                then ''
+                  AuthTypeApp(
+                    app_id=${toString cfg.github.authType.app.id},
+                  )
+                ''
+                else throw "One of AuthTypeApp or AuthTypeLegacy must be enabled"
+              }
                 )"
-                },
+            },
                 gitea=${
-                  if !cfg.gitea.enable then
-                    "None"
-                  else
-                    "GiteaConfig(
+              if !cfg.gitea.enable
+              then "None"
+              else "GiteaConfig(
                     instance_url=${builtins.toJSON cfg.gitea.instanceUrl},
                     oauth_id=${builtins.toJSON cfg.gitea.oauthId},
                     topic=${builtins.toJSON cfg.gitea.topic},
                 )"
-                },
+            },
                 build_retries=${builtins.toJSON cfg.buildRetries},
                 cachix=${
-                  if cfg.cachix.name == null then
-                    "None"
-                  else
-                    "CachixConfig(
+              if cfg.cachix.name == null
+              then "None"
+              else "CachixConfig(
                     name=${builtins.toJSON cfg.cachix.name},
                     signing_key_secret_name=${
-                                        if cfg.cachix.signingKeyFile != null then builtins.toJSON "cachix-signing-key" else "None"
-                                      },
+                if cfg.cachix.signingKeyFile != null
+                then builtins.toJSON "cachix-signing-key"
+                else "None"
+              },
                     auth_token_secret_name=${
-                                        if cfg.cachix.authTokenFile != null then builtins.toJSON "cachix-auth-token" else "None"
-                                      },
+                if cfg.cachix.authTokenFile != null
+                then builtins.toJSON "cachix-auth-token"
+                else "None"
+              },
                 )"
-                },
+            },
                 admins=${builtins.toJSON cfg.admins},
                 url=${builtins.toJSON config.services.buildbot-nix.master.webhookBaseUrl},
                 nix_eval_max_memory_size=${builtins.toJSON cfg.evalMaxMemorySize},
                 nix_eval_worker_count=${
-                  if cfg.evalWorkerCount == null then "None" else builtins.toString cfg.evalWorkerCount
-                },
+              if cfg.evalWorkerCount == null
+              then "None"
+              else builtins.toString cfg.evalWorkerCount
+            },
                 nix_supported_systems=${builtins.toJSON cfg.buildSystems},
-                outputs_path=${if cfg.outputsPath == null then "None" else builtins.toJSON cfg.outputsPath},
+                outputs_path=${
+              if cfg.outputsPath == null
+              then "None"
+              else builtins.toJSON cfg.outputsPath
+            },
                 post_build_steps=[
-                  ${lib.concatMapStringsSep ",\n" ({ name, environment, command }: ''
-                    steps.ShellCommand(
-                      name=${builtins.toJSON name},
-                      env={
-                        ${lib.concatMapStringsSep ",\n" ({name, value}: ''
-                          ${name}: ${interpolateToString value}
-                        '') (lib.mapAttrsToList lib.nameValuePair environment)}
-                      },
-                      command=[
-                        ${lib.concatMapStringsSep ",\n" (value:
-                          interpolateToString value
-                        ) (if lib.isList command then command else [ command ])}
-                      ]
-                    )
-                  '') cfg.postBuildSteps}
+                  ${lib.concatMapStringsSep ",\n" ({
+                name,
+                environment,
+                command,
+              }: ''
+                steps.ShellCommand(
+                  name=${builtins.toJSON name},
+                  env={
+                    ${lib.concatMapStringsSep ",\n" ({
+                  name,
+                  value,
+                }: ''
+                  ${name}: ${interpolateToString value}
+                '') (lib.mapAttrsToList lib.nameValuePair environment)}
+                  },
+                  command=[
+                    ${lib.concatMapStringsSep ",\n" (
+                    value:
+                      interpolateToString value
+                  ) (
+                    if lib.isList command
+                    then command
+                    else [command]
+                  )}
+                  ]
+                )
+              '')
+              cfg.postBuildSteps}
                 ]
             )
           ''
         ];
-        buildbotUrl =
-          let
-            host = config.services.nginx.virtualHosts.${cfg.domain};
-            hasSSL = host.forceSSL || host.addSSL || cfg.useHTTPS;
-          in
-          "${if hasSSL then "https" else "http"}://${cfg.domain}/";
+        buildbotUrl = let
+          host = config.services.nginx.virtualHosts.${cfg.domain};
+          hasSSL = host.forceSSL || host.addSSL || cfg.useHTTPS;
+        in "${
+          if hasSSL
+          then "https"
+          else "http"
+        }://${cfg.domain}/";
         dbUrl = config.services.buildbot-nix.master.dbUrl;
 
         package = cfg.buildbotNixpkgs.buildbot.overrideAttrs (old: {
-          patches = old.patches ++ [ ./0001-master-reporters-github-render-token-for-each-reques.patch ];
+          patches = old.patches ++ [./0001-master-reporters-github-render-token-for-each-reques.patch];
         });
-        pythonPackages =
-          let
-            buildbot-gitea = (cfg.buildbotNixpkgs.python3.pkgs.callPackage ./buildbot-gitea.nix {
+        pythonPackages = let
+          buildbot-gitea =
+            (cfg.buildbotNixpkgs.python312.pkgs.callPackage ./buildbot-gitea.nix {
               inherit (cfg.buildbotNixpkgs) buildbot;
-            }).overrideAttrs (old: {
-              patches = old.patches ++ [
-                ./0002-GiteaHandler-set-branch-to-the-PR-branch-not-the-bas.patch
-                ./0001-GiteaHandler-set-the-category-of-PR-changes-to-pull-.patch
-              ];
+            })
+            .overrideAttrs (old: {
+              patches =
+                old.patches
+                ++ [
+                  ./0002-GiteaHandler-set-branch-to-the-PR-branch-not-the-bas.patch
+                  ./0001-GiteaHandler-set-the-category-of-PR-changes-to-pull-.patch
+                ];
             });
-          in
+        in
           ps: [
             pkgs.nix
             ps.requests
@@ -515,39 +542,39 @@ in
             ps.psycopg2
             (ps.toPythonModule cfg.buildbotNixpkgs.buildbot-worker)
             cfg.buildbotNixpkgs.buildbot-plugins.www
-            (cfg.buildbotNixpkgs.python3.pkgs.callPackage ../default.nix { })
+            (cfg.buildbotNixpkgs.python3.pkgs.callPackage ../default.nix {})
             buildbot-gitea
           ];
       };
 
       systemd.services.buildbot-master = {
-        after = [ "postgresql.service" ];
+        after = ["postgresql.service"];
         path = [
           pkgs.openssl
         ];
         serviceConfig = {
           # in master.py we read secrets from $CREDENTIALS_DIRECTORY
           LoadCredential =
-            [ "buildbot-nix-workers:${cfg.workersFile}" ]
+            ["buildbot-nix-workers:${cfg.workersFile}"]
             ++ lib.optional (cfg.authBackend == "gitea") "gitea-oauth-secret:${cfg.gitea.oauthSecretFile}"
             ++ lib.optional (cfg.authBackend == "github") "github-oauth-secret:${cfg.github.oauthSecretFile}"
             ++ lib.optional
-              (
-                cfg.cachix.signingKeyFile != null
-              ) "cachix-signing-key:${builtins.toString cfg.cachix.signingKeyFile}"
+            (
+              cfg.cachix.signingKeyFile != null
+            ) "cachix-signing-key:${builtins.toString cfg.cachix.signingKeyFile}"
             ++ lib.optional
-              (
-                cfg.cachix.authTokenFile != null
-              ) "cachix-auth-token:${builtins.toString cfg.cachix.authTokenFile}"
+            (
+              cfg.cachix.authTokenFile != null
+            ) "cachix-auth-token:${builtins.toString cfg.cachix.authTokenFile}"
             ++ lib.optionals (cfg.github.enable) ([
-              "github-webhook-secret:${cfg.github.webhookSecretFile}"
-            ]
-            ++ lib.optionals (cfg.github.authType ? "legacy") [
-              "github-token:${cfg.github.authType.legacy.tokenFile}"
-            ]
-            ++ lib.optionals (cfg.github.authType ? "app") [
-              "github-app-secret-key:${cfg.github.authType.app.secretKeyFile}"
-            ])
+                "github-webhook-secret:${cfg.github.webhookSecretFile}"
+              ]
+              ++ lib.optionals (cfg.github.authType ? "legacy") [
+                "github-token:${cfg.github.authType.legacy.tokenFile}"
+              ]
+              ++ lib.optionals (cfg.github.authType ? "app") [
+                "github-app-secret-key:${cfg.github.authType.app.secretKeyFile}"
+              ])
             ++ lib.optionals cfg.gitea.enable [
               "gitea-token:${cfg.gitea.tokenFile}"
               "gitea-webhook-secret:${cfg.gitea.webhookSecretFile}"
@@ -557,7 +584,7 @@ in
 
       services.postgresql = {
         enable = true;
-        ensureDatabases = [ "buildbot" ];
+        ensureDatabases = ["buildbot"];
         ensureUsers = [
           {
             name = "buildbot";
@@ -568,20 +595,22 @@ in
 
       services.nginx.enable = true;
       services.nginx.virtualHosts.${cfg.domain} = {
-        locations = {
-          "/".proxyPass = "http://127.0.0.1:${builtins.toString config.services.buildbot-master.port}/";
-          "/sse" = {
-            proxyPass = "http://127.0.0.1:${builtins.toString config.services.buildbot-master.port}/sse";
-            # proxy buffering will prevent sse to work
-            extraConfig = "proxy_buffering off;";
-          };
-          "/ws" = {
-            proxyPass = "http://127.0.0.1:${builtins.toString config.services.buildbot-master.port}/ws";
-            proxyWebsockets = true;
-            # raise the proxy timeout for the websocket
-            extraConfig = "proxy_read_timeout 6000s;";
-          };
-        } // lib.optionalAttrs (cfg.outputsPath != null) { "/nix-outputs".root = cfg.outputsPath; };
+        locations =
+          {
+            "/".proxyPass = "http://127.0.0.1:${builtins.toString config.services.buildbot-master.port}/";
+            "/sse" = {
+              proxyPass = "http://127.0.0.1:${builtins.toString config.services.buildbot-master.port}/sse";
+              # proxy buffering will prevent sse to work
+              extraConfig = "proxy_buffering off;";
+            };
+            "/ws" = {
+              proxyPass = "http://127.0.0.1:${builtins.toString config.services.buildbot-master.port}/ws";
+              proxyWebsockets = true;
+              # raise the proxy timeout for the websocket
+              extraConfig = "proxy_read_timeout 6000s;";
+            };
+          }
+          // lib.optionalAttrs (cfg.outputsPath != null) {"/nix-outputs".root = cfg.outputsPath;};
       };
 
       systemd.tmpfiles.rules =
@@ -590,8 +619,8 @@ in
           "R /var/lib/buildbot-worker/gcroot - - - - -"
         ]
         ++ lib.optional (cfg.outputsPath != null)
-          # Allow buildbot-master to write to this directory
-          "d ${cfg.outputsPath} 0755 buildbot buildbot - -";
+        # Allow buildbot-master to write to this directory
+        "d ${cfg.outputsPath} 0755 buildbot buildbot - -";
     })
   ];
 }
