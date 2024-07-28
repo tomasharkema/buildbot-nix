@@ -50,11 +50,11 @@ class JWTToken(RepoToken):
 
         def rs256_sign(data: str, private_key: str) -> str:
             signature = subprocess.run(
-                ["openssl", "dgst", "-binary", "-sha256", "-sign", private_key],
+                ["openssl", "dgst", "-binary", "-sha256", "-sign", os.environ.get("CREDENTIALS_DIRECTORY") + "/" + private_key],
                 input=data.encode("utf-8"),
                 stdout=subprocess.PIPE,
                 check=True,
-                cwd=os.environ.get("CREDENTIALS_DIRECTORY"),
+                # cwd=os.environ.get("CREDENTIALS_DIRECTORY"),
             ).stdout
             return base64url(signature)
 
